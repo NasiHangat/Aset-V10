@@ -331,13 +331,71 @@ function toggleSelectAll() {
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    // Select all checkboxes when "select_all" checkbox is clicked
-    document.getElementById('select_all').addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('input[name="selected_items[]"]');
-        checkboxes.forEach(function(checkbox) {
-            checkbox.checked = document.getElementById('select_all').checked;
-        });
+  document.addEventListener('DOMContentLoaded', function () {
+    // 1. Ambil data lokasi dari elemen div di blade
+    const locationDataElement = document.getElementById('location-data');
+    if (!locationDataElement) return; // Stop jika elemen tidak ada
+
+    const locations = JSON.parse(locationDataElement.getAttribute('data-locations'));
+    
+    // 2. Definisi Elemen Dropdown
+    const gedungSelect = document.getElementById('gedung');
+    const lantaiSelect = document.getElementById('lantai');
+    const ruanganSelect = document.getElementById('ruangan');
+
+    // 3. Event Listener: Ketika Gedung Dipilih
+    gedungSelect.addEventListener('change', function () {
+        const selectedGedung = this.value;
+        
+        // Reset Lantai & Ruangan
+        lantaiSelect.innerHTML = '<option value="">Pilih Lantai</option>';
+        ruanganSelect.innerHTML = '<option value="">Pilih Ruangan</option>';
+        lantaiSelect.disabled = true;
+        ruanganSelect.disabled = true;
+
+        if (selectedGedung) {
+            // Filter data lokasi berdasarkan gedung yang dipilih
+            const filteredFloors = [...new Set(locations
+                .filter(loc => loc.office === selectedGedung)
+                .map(loc => loc.floor))]; // Ambil lantai unik
+
+            // Isi dropdown Lantai
+            filteredFloors.sort().forEach(floor => {
+                const option = document.createElement('option');
+                option.value = floor;
+                option.textContent = floor;
+                lantaiSelect.appendChild(option);
+            });
+
+            lantaiSelect.disabled = false; // Aktifkan dropdown lantai
+        }
+    });
+
+    // 4. Event Listener: Ketika Lantai Dipilih
+    lantaiSelect.addEventListener('change', function () {
+        const selectedGedung = gedungSelect.value;
+        const selectedLantai = this.value;
+
+        // Reset Ruangan
+        ruanganSelect.innerHTML = '<option value="">Pilih Ruangan</option>';
+        ruanganSelect.disabled = true;
+
+        if (selectedGedung && selectedLantai) {
+            // Filter data lokasi berdasarkan gedung & lantai
+            const filteredRooms = locations
+                .filter(loc => loc.office === selectedGedung && loc.floor === selectedLantai)
+                .map(loc => loc.room); // Ambil nama ruangan
+
+            // Isi dropdown Ruangan
+            filteredRooms.sort().forEach(room => {
+                const option = document.createElement('option');
+                option.value = room;
+                option.textContent = room;
+                ruanganSelect.appendChild(option);
+            });
+
+            ruanganSelect.disabled = false; // Aktifkan dropdown ruangan
+        }
     });
 });
 
