@@ -15,33 +15,39 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function get_data()
-	{
-        $sess = Session::all();
-        $employe = employee::all();
-        if ($sess['jabatan'] !== 'Operator' ) {
-            $users = User::all();
-        }else{
-            $users = User::where('jabatan', "Operator")->get();
-        }
-        $allData = $employe->merge($users);
-        $rank = $allData;
+public function get_data()
+{
+    $sess = Session::all();
 
-        // Paginate the merged dataset with 10 items per page
-        $pageSize = 10;
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $employee = new LengthAwarePaginator(
-            $allData->forPage($currentPage, $pageSize),
-            $allData->count(),
-            $pageSize,
-            $currentPage,
-            ['path' => LengthAwarePaginator::resolveCurrentPath()]
-        );
+    // 1. Siapkan query dari kedua tabel
+    $query1 = DB::table('employees')
+        ->select('id', 'nip', 'name', 'email', 'jabatan', 'alamat', 'gender', 'phone_number', DB::raw("'employee' as type"));
 
-        // Pass the paginated data to the view
-		return view('pengguna.getData', compact(['rank','employee', 'sess']));
-	}
+    $query2 = DB::table('users')
+        ->select('id', 'nip', 'name', 'email', 'jabatan', 'alamat', 'gender', 'phone_number', DB::raw("'user' as type"));
 
+    if ($sess['jabatan'] === 'Operator') {
+        $query2->where('jabatan', 'Operator');
+    }
+
+    // 2. Gabungkan data (Ini adalah variabel $rank yang dibutuhkan filter)
+    $allData = $query1->union($query2)->get();
+    $rank = $allData; 
+
+    // 3. Proses Paginasi
+    $pageSize = 10;
+    $currentPage = LengthAwarePaginator::resolveCurrentPage();
+    $employee = new LengthAwarePaginator(
+        $allData->forPage($currentPage, $pageSize),
+        $allData->count(),
+        $pageSize,
+        $currentPage,
+        ['path' => LengthAwarePaginator::resolveCurrentPath()]
+    );
+
+    // 4. Kirim SEMUA variabel yang dibutuhkan ke View
+    return view('pengguna.getData', compact('employee', 'sess', 'rank'));
+}
     public function addData()
     {
         return view('pengguna.add');
@@ -118,32 +124,27 @@ class UserController extends Controller
     //        return view('pengguna.update', ['employe' => $employe, 'sess' => $sess]);
     //    }
 	//}
-    public function editData(Request $request, $id)
-    {
-        $sess = session::all();
-        
-        try {
-            //$employe = Employee::findOrFail($id);
-            //$user = User::findOrFail($id);
-            $employe = Employee::all();
-            $user = User::all();
-            $allCek = $employe->merge($user);
-            //dd($allCek);
+public function editData(Request $request, $id)
+{
+    $sess = session()->all();
+    $type = $request->query('type'); // Mengambil parameter 'type' dari URL
 
-            if ($sess['jabatan'] === 'Admin' || $sess['jabatan'] === 'Operator') {
-                $user = User::where('nip', $employe->nip)->first();
-
-                if ($user) {
-                    $employe = $user;
-                }
-            }
-            
-            return view('pengguna.update', ['employe' => $employe, 'sess' => $sess]);
-        } catch (ModelNotFoundException $e) {
-            // Handle the exception as needed
+    try {
+        if ($type === 'user') {
+            $data = User::findOrFail($id);
+        } else {
+            $data = employee::findOrFail($id);
         }
-    }
 
+        return view('pengguna.update', [
+            'employe' => $data, 
+            'sess' => $sess
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        return redirect('/pengguna')->with('error', 'Data tidak ditemukan.');
+    }
+}
 	public function update(Request $request, $id)
 	{
         $validator = $request->validate([

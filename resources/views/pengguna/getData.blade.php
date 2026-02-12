@@ -78,19 +78,31 @@
 						<td>{{ $item->gender }}</td>
 						<td>{{ $item->phone_number }}</td>
 						<td>
-                            @if ($sess['id'] === $item->id && $sess['jabatan'] === 'Operator')
-                                <a href="{{ route('pengguna.edit', $item->id) }}" class="badge bg-warning text-dark" style="text-decoration: none;"><i class="bi bi-pencil"></i></a>
-                            @endif
-                            @if ($sess['jabatan'] !== 'Operator')
-                                <a href="{{ route('pengguna.edit', $item->id) }}" class="badge bg-warning text-dark" style="text-decoration: none;"><i class="bi bi-pencil"></i></a>
-                                <a class="badge bg-danger" style="text-decoration: none;"><i data-feather="edit"></i>
-                                    <form action="{{ route('pengguna.destroy', $item->id ) }}" method="post" id="deleteForm{{ $item->id }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="button" class="bg-danger border-0 text-white delete-button" data-form-id="deleteForm{{ $item->id }}"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                </a>
-                            @endif
+							<div class="d-flex gap-1">
+								{{-- Logika Tombol Edit --}}
+								{{-- Jika jabatan adalah Operator, dia hanya bisa edit datanya sendiri --}}
+								@if ($sess['jabatan'] === 'Operator')
+									@if ($sess['id'] == $item->id && $sess['type'] == $item->type)
+										<a href="{{ route('pengguna.edit', ['id' => $item->id, 'type' => $item->type]) }}" class="badge bg-warning text-dark">
+											<i class="bi bi-pencil"></i>
+										</a>
+									@endif
+								@else
+									{{-- Jika Admin, bisa edit siapa saja --}}
+									<a href="{{ route('pengguna.edit', ['id' => $item->id, 'type' => $item->type]) }}" class="badge bg-warning text-dark">
+										<i class="bi bi-pencil"></i>
+									</a>
+									
+									{{-- Tombol Hapus: Kirim ID dan Type agar tidak salah hapus --}}
+									<form action="{{ route('pengguna.destroy', ['id' => $item->id, 'type' => $item->type]) }}" method="post" id="deleteForm{{ $item->id }}{{ $item->type }}">
+										@csrf
+										@method('DELETE')
+										<button type="button" class="badge bg-danger border-0 delete-button" data-form-id="deleteForm{{ $item->id }}{{ $item->type }}">
+											<i class="bi bi-trash"></i>
+										</button>
+									</form>
+								@endif
+							</div>
 						</td>
 						</tr>
 					@endforeach
