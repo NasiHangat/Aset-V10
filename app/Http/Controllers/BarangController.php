@@ -2,24 +2,24 @@
 
 namespace App\Http\Controllers;
 
-// --- 1. IMPORT LIBRARY (Jangan Dihapus) ---
+use App\Exports\AsetListExport;
 use App\Models\Materials;
 use App\Models\locations;
 use App\Models\employee;
 use App\Models\Category;
+use App\Models\users;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Imports\AsetImport;
-use Illuminate\Validation\ValidationException;
-use Exception;
-
-// Library Excel Wajib
+use Barryvdh\DomPDF\Facade\Pdf as Pdf;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Contracts\View\View;
-use Maatwebsite\Excel\Concerns\FromView;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithStyles;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use App\Imports\AsetImport;
+use Carbon\Exceptions\InvalidFormatException as ExceptionsInvalidFormatException;
+use Exception;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
 use PhpOffice\PhpSpreadsheet\Reader\InvalidFormatException;
@@ -34,6 +34,8 @@ class BarangController extends Controller
         $items = DB::table('materials')->get();
         $tahun = DB::table('materials')->get();
 
+
+
         return view('asetTetap.index', compact('items', 'locations', 'employees', 'categories', 'tahun'));
     }
 
@@ -42,8 +44,10 @@ class BarangController extends Controller
         $locations = DB::table('locations')->get();
         $categories = DB::table('categories')->get();
         $employees = DB::table('employees')->get();
-        
+        // Retrieve unique values from the "office" column
         $gedungOptions = DB::table('locations')->distinct('office')->pluck('office');
+
+        // Retrieve unique values from the "floor" column
         $lantaiOptions = DB::table('locations')->distinct('floor')->pluck('floor');
 
         return view('asetTetap.create', [
@@ -60,7 +64,7 @@ class BarangController extends Controller
         $office = $request->input('gedung');
         $floor = $request->input('lantai');
         $room = $request->input('ruangan');
-        
+        // dd($office, $floor, $room);
         $locationId = DB::table('locations')
             ->where('office', $office)
             ->where('floor', $floor)
@@ -68,6 +72,7 @@ class BarangController extends Controller
             ->value('id');
 
         $material = new Materials();
+        // $material->id = int::uuid();
         $material->code = $request->input('kode_barang');
         $material->nup = $request->input('nup');
         $material->name = $request->input('nama_barang');
@@ -77,14 +82,13 @@ class BarangController extends Controller
         $material->nilai = $request->input('nilai');
         $material->status = 'Tidak Dipakai';
         $material->years = $request->input('tahun');
-        $material->bulan = $request->input('bulan') ?? date('n');
+        // $material->quantity = $request->input('quantity');
         $material->satuan = $request->input('satuan');
         $material->store_location = $locationId;
         $material->life_time = $request->input('expiry_date');
         $material->specification = $request->input('spek');
         $material->condition = $request->input('kondisi');
         $material->supervisor = $request->input('supervisor');
-        
         if ($request->hasFile('dokumentasi')) {
             $image = $request->file('dokumentasi');
             $filename = $image->getClientOriginalName();
@@ -92,7 +96,6 @@ class BarangController extends Controller
             $image->move($destination, $filename);
             $material->documentation = $filename;
         }
-        
         $material->description = $request->input('keterangan');
         $material->type = $request->input('type');
         $dikalibrasi = $request->input('dikalibrasi') !== null && $request->input('dikalibrasi') === '1' ? 1 : 0;
@@ -110,11 +113,15 @@ class BarangController extends Controller
         $item = Materials::find($id);
         $employees = DB::table('employees')->get();
         $locations = DB::table('locations')->get();
+        $locations = DB::table('locations')->get();
         $categories = DB::table('categories')->get();
 
         $prevLocation = DB::table('locations')->where('id', $item->store_location)->first();
 
+        // Retrieve unique values from the "office" column
         $gedungOptions = DB::table('locations')->distinct('office')->pluck('office');
+
+        // Retrieve unique values from the "floor" column
         $lantaiOptions = DB::table('locations')->distinct('floor')->pluck('floor');
 
         return view('asetTetap.edit', [
@@ -148,6 +155,7 @@ class BarangController extends Controller
         $material->category = $request->input('category');
         $material->nilai = $request->input('nilai');
         $material->years = $request->input('tahun');
+        // $material->quantity = $request->input('quantity');
         $material->satuan = $request->input('satuan');
         $material->store_location = $locationId;
         $material->status = $request->input('status');
@@ -155,7 +163,6 @@ class BarangController extends Controller
         $material->specification = $request->input('spek');
         $material->condition = $request->input('kondisi');
         $material->supervisor = $request->input('supervisor');
-        
         if ($request->hasFile('dokumentasi')) {
             $image = $request->file('dokumentasi');
             $filename = $image->getClientOriginalName();
@@ -163,7 +170,6 @@ class BarangController extends Controller
             $image->move($destination, $filename);
             $material->documentation = $filename;
         }
-        
         $material->description = $request->input('keterangan');
         $material->type = $request->input('type');
         $dikalibrasi = $request->input('dikalibrasi') !== null && $request->input('dikalibrasi') === '1' ? 1 : 0;
@@ -176,61 +182,113 @@ class BarangController extends Controller
         return redirect('/asetTetap');
     }
 
+
     public function destroy($id)
     {
         $material = Materials::findOrFail($id);
         $filename = $material->documentation;
 
+        // Delete the image file if it exists
         if (!empty($filename)) {
             $destination = public_path('uploads/' . $filename);
             if (file_exists($destination)) {
                 unlink($destination);
             }
         }
+
+        // Delete the Materials record
         $material->delete();
 
         return response()->json(['message' => 'Data deleted successfully']);
     }
 
+
     public function multiDelete(Request $request)
     {
+        // Delete the selected items
         foreach ($request->id_aset as $id) {
             $material = Materials::findOrFail($id);
             $filename = $material->documentation;
 
+            // Delete the image file if it exists
             if (!empty($filename)) {
                 $destination = public_path('uploads/' . $filename);
                 if (file_exists($destination)) {
                     unlink($destination);
                 }
             }
+
+            // Delete the Materials record
             $material->delete();
         }
 
         return redirect()->route('asetTetap.index')->with('success', 'Data deleted successfully');
     }
 
+
+
+    // public function show(Request $request)
+    // {
+    //     $ids = $request->query('ids');
+    //     $selectedIds = json_decode($ids, true);
+
+    //     return view('asetTetap.qrcode')->with('selectedIds', $selectedIds);;
+    // }
+
+
+    // check Code
+    // public function checkCodeExists(Request $request)
+    // {
+    //     $kodeBarang = $request->input('kode_barang');
+    //     $oldKodeBarang = $request->input('old_kode_barang');
+
+    //     if ($oldKodeBarang) {
+    //         // Edit form - check if the code already exists in the database and has different values than the old value
+    //         $exists = Materials::where('code', $kodeBarang)
+    //             ->where('code', '!=', $oldKodeBarang)
+    //             ->exists();
+    //     } else {
+    //         // Add form - check if the code already exists in the database
+    //         $exists = Materials::where('code', $kodeBarang)->exists();
+    //     }
+
+    //     if ($exists) {
+    //         return response()->json(['message' => 'Code already exists or has different values'], 400);
+    //     }
+
+    //     return response()->json(['message' => 'Code is valid'], 200);
+    // }
+
+    // =========== check nup
     public function checkNupExists(Request $request)
-    {
-        $nup = $request->input('nup');
-        $code = $request->input('code');
-        $oldNup = $request->input('old_nup');
+{
+    $nup = $request->input('nup');
+    $code = $request->input('code');
+    $oldNup = $request->input('old_nup');
 
-        if ($oldNup) {
-            if($nup !== $oldNup){
-                $exists = Materials::where('nup', $nup)->where('code', $code)->exists();
-            } else {
-                $exists = false;
-            }
-        } else {
-            $exists = Materials::where('nup', $nup)->where('code', $code)->exists();
+    if ($oldNup) {
+        // Edit form - check if the NUP already exists in the database and has different values than the old value
+        if($nup !== $oldNup){
+            $exists = Materials::where('nup', $nup)
+                // ->where('nup', '!=', $oldNup)
+                ->where('code', $code)
+                ->exists();
         }
-
-        if ($exists) {
-            return response()->json(['message' => 'NUP with code '. $code . 'already exists'], 400);
-        }
-        return response()->json(['message' => 'NUP is valid'], 200);
+    } else {
+        // Add form - check if the NUP already exists in the database
+        $exists = Materials::where('nup', $nup)
+            ->where('code', $code)
+            ->exists();
     }
+
+    if ($exists) {
+        return response()->json(['message' => 'NUP with code '. $code . 'already exists or has different values'], 400);
+    }
+
+    return response()->json(['message' => 'NUP is valid'], 200);
+}
+
+
 
     public function checkNoSeriExists(Request $request)
     {
@@ -238,16 +296,22 @@ class BarangController extends Controller
         $oldNoSeri = $request->input('old_no_seri');
 
         if ($oldNoSeri) {
-            $exists = Materials::where('no_seri', $noSeri)->where('no_seri', '!=', $oldNoSeri)->exists();
+            // Edit form - check if the code already exists in the database and has different values than the old value
+            $exists = Materials::where('no_seri', $noSeri)
+                ->where('no_seri', '!=', $oldNoSeri)
+                ->exists();
         } else {
+            // Add form - check if the code already exists in the database
             $exists = Materials::where('no_seri', $noSeri)->exists();
         }
 
         if ($exists) {
-            return response()->json(['message' => 'No Seri already exists'], 400);
+            return response()->json(['message' => 'No Seri already exists or has different values'], 400);
         }
+
         return response()->json(['message' => 'No Seri valid'], 200);
     }
+
 
     public function search(Request $request)
     {
@@ -256,6 +320,7 @@ class BarangController extends Controller
         $employees = DB::table('employees')->get();
         $tahun = DB::table('materials')->get();
         $query = $request->input('query');
+
 
         $items = Materials::where('code', 'LIKE', '%' . $query . '%')
             ->orWhere('nup', 'LIKE', '%' . $query . '%')
@@ -277,16 +342,24 @@ class BarangController extends Controller
         $query = DB::table('materials');
 
         $type = $request->input('type');
-        if ($type !== 'all') { $query->where('type', $type); }
+        if ($type !== 'all') {
+            $query->where('type', $type);
+        }
 
         $category = $request->input('category');
-        if ($category !== 'all') { $query->where('category', $category); }
+        if ($category !== 'all') {
+            $query->where('category', $category);
+        }
 
         $years_from = $request->input('years_from');
-        if ($years_from !== 'dari') { $query->where('years', '>=', $years_from); }
+        if ($years_from !== 'dari') {
+            $query->where('years', '>=', $years_from);
+        }
 
         $years_till = $request->input('years_till');
-        if ($years_till !== 'sampai') { $query->where('years', '<=', $years_till); }
+        if ($years_till !== 'sampai') {
+            $query->where('years', '<=', $years_till);
+        }
 
         $office = $request->input('gedung');
         $floor = $request->input('lantai');
@@ -294,20 +367,34 @@ class BarangController extends Controller
 
         if ($office || $floor || $room) {
             $query->whereIn('store_location', function ($query) use ($office, $floor, $room) {
-                $query->select('id')->from('locations')->where('office', $office);
-                if ($floor) { $query->where('floor', $floor); }
-                if ($room) { $query->where('room', $room); }
+                $query->select('id')
+                    ->from('locations')
+                    ->where('office', $office);
+
+                if ($floor) {
+                    $query->where('floor', $floor);
+                }
+
+                if ($room) {
+                    $query->where('room', $room);
+                }
             });
         }
 
         $condition = $request->input('condition');
-        if ($condition !== 'all') { $query->where('condition', $condition); }
+        if ($condition !== 'all') {
+            $query->where('condition', $condition);
+        }
 
         $supervisor = $request->input('supervisor');
-        if ($supervisor !== 'all') { $query->where('supervisor', $supervisor); }
+        if ($supervisor !== 'all') {
+            $query->where('supervisor', $supervisor);
+        }
 
         $calibrated = $request->input('calibrate');
-        if ($calibrated !== 'all') { $query->where('dikalibrasi', $calibrated); }
+        if ($calibrated !== 'all') {
+            $query->where('dikalibrasi', $calibrated);
+        }
 
         $items = $query->get();
 
@@ -320,76 +407,60 @@ class BarangController extends Controller
     }
 
     public function importStore(Request $request)
-    {
-        $request->validate(['file' => 'required|mimes:xls,xlsx']);
+{
+    $request->validate([
+        'file' => 'required|mimes:xls,xlsx',
+    ]);
 
-        try {
-            $file = $request->file('file');
-            $spreadsheet = IOFactory::load($file);
-            $worksheet = $spreadsheet->getActiveSheet();
-            $cellValue = $worksheet->getCellByColumnAndRow(1, 1)->getValue();
-            $expectedHeader = 'DATA MASTER BMN BALAI SAINS BANGUNAN'; 
+    try {
+        $file = $request->file('file');
 
-            if ($cellValue !== $expectedHeader) {
-                throw ValidationException::withMessages([
-                    'file' => 'Invalid Excel layout. Header must be: ' . $expectedHeader,
-                ]);
-            }
-            Excel::import(new AsetImport, $file);
-            return back()->withStatus('Import Berhasil');
-        } catch (ValidationException $e) {
-            return back()->withErrors($e->validator->errors());
-        } catch (Exception $e) {
-            return back()->withErrors(['file' => 'Problem processing file: ' . $e->getMessage()]);
+        // Load the Excel file using PhpSpreadsheet
+        $spreadsheet = IOFactory::load($file);
+
+        // Get the first worksheet
+        $worksheet = $spreadsheet->getActiveSheet();
+
+        // Get the value of the first cell in the first row
+        $cellValue = $worksheet->getCellByColumnAndRow(1, 1)->getValue();
+
+        // Check if the header value matches the expected header
+        $expectedHeader = 'DATA MASTER BMN BALAI SAINS BANGUNAN'; // Replace with your expected header
+
+        if ($cellValue !== $expectedHeader) {
+            throw ValidationException::withMessages([
+                'file' => 'Invalid Excel layout. The header must be: ' . $expectedHeader,
+            ]);
         }
+        // If the header is valid, proceed with the import
+        Excel::import(new AsetImport, $file);
+
+        return back()->withStatus('Import Berhasil');
+    } catch (ValidationException $e) {
+        // Handle the validation exception, which occurs when the header is not as expected
+        return back()->withErrors($e->validator->errors());
+    } catch (ReaderException $e) {
+        // Handle the PhpOffice\PhpSpreadsheet\Reader\Exception, which occurs if there's an issue with loading the Excel file
+        return back()->withErrors(['file' => 'Error loading the Excel file. Please check the file and try again.']);
+    } catch (ExceptionsInvalidFormatException $e) {
+        // Handle the PhpOffice\PhpSpreadsheet\Reader\InvalidFormatException, which occurs if the file format is not valid
+        return back()->withErrors(['file' => 'Invalid file format. Please upload a valid Excel file.']);
+    } catch (Exception $e) {
+        error_log("Error processing Excel file: " . $e->getMessage() . " in " . $e->getFile() . " at line " . $e->getLine());
+
+    // Provide a more informative user-friendly message
+    return back()->withErrors(['file' => 'There was a problem processing the Excel file: ' . $e->getMessage() . '. Please double-check the file and try again. If the issue persists, please contact support.']);
     }
 
-    // --- FUNGSI EXPORT ---
+
+
+
+}
+
+
     public function export(Request $request)
     {
         $selectedAsets = $request->input('id_aset', []);
-        // Ini memanggil Class AsetExportInternal yang ada di bawah file ini
-        return Excel::download(new AsetExportInternal($selectedAsets), 'DataAset.xlsx');
-    }
-
-} // <--- BATAS CLASS BARANG CONTROLLER (Hanya boleh ada SATU kurung tutup di sini)
-
-
-// =========================================================================
-// CLASS INTERNAL UTK EXPORT (DITARUH DI LUAR CONTROLLER, DI PALING BAWAH)
-// =========================================================================
-
-class AsetExportInternal implements FromView, ShouldAutoSize, WithStyles
-{
-    protected $selectedAsets;
-
-    public function __construct($selectedAsets)
-    {
-        $this->selectedAsets = $selectedAsets;
-    }
-
-    public function view(): View
-    {
-        // Jika ada ID yang dipilih (dicentang), ambil ID itu saja.
-        if (!empty($this->selectedAsets)) {
-            $data = Materials::whereIn('id', $this->selectedAsets)->get();
-        } else {
-            // Jika tidak ada yang dicentang, download SEMUA data.
-            $data = Materials::all();
-        }
-
-        // Kirim data ke view export
-        return view('asetTetap.export-file', [
-            'asets' => $data,
-            'locations' => locations::all(),
-            'employees' => employee::all()
-        ]);
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => ['font' => ['bold' => true]], // Bold Header Baris 1
-        ];
+        return Excel::download(new AsetListExport($selectedAsets), 'AsetLaporanKondisiBarang.xlsx');
     }
 }
