@@ -19,6 +19,11 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AsetImport;
 use Carbon\Exceptions\InvalidFormatException as ExceptionsInvalidFormatException;
 use Exception;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
@@ -82,6 +87,7 @@ class BarangController extends Controller
         $material->nilai = $request->input('nilai');
         $material->status = 'Tidak Dipakai';
         $material->years = $request->input('tahun');
+        $material->bulan = $request->input('bulan') ?? date('n');
         // $material->quantity = $request->input('quantity');
         $material->satuan = $request->input('satuan');
         $material->store_location = $locationId;
@@ -135,51 +141,56 @@ class BarangController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
-    {
-        $office = $request->input('gedung');
-        $floor = $request->input('lantai');
-        $room = $request->input('ruangan');
-        $locationId = DB::table('locations')
-            ->where('office', $office)
-            ->where('floor', $floor)
-            ->where('room', $room)
-            ->value('id');
+public function update(Request $request, $id)
+            
+{
+    $office = $request->input('gedung');
+    $floor  = $request->input('lantai');
+    $room   = $request->input('ruangan');
 
-        $material = Materials::find($id);
-        $material->code = $request->input('kode_barang');
-        $material->nup = $request->input('nup');
-        $material->name = $request->input('nama_barang');
-        $material->name_fix = $request->input('koreksi_nama');
-        $material->no_seri = $request->input('no_seri');
-        $material->category = $request->input('category');
-        $material->nilai = $request->input('nilai');
-        $material->years = $request->input('tahun');
-        // $material->quantity = $request->input('quantity');
-        $material->satuan = $request->input('satuan');
-        $material->store_location = $locationId;
-        $material->status = $request->input('status');
-        $material->life_time = $request->input('expiry_date');
-        $material->specification = $request->input('spek');
-        $material->condition = $request->input('kondisi');
-        $material->supervisor = $request->input('supervisor');
-        if ($request->hasFile('dokumentasi')) {
-            $image = $request->file('dokumentasi');
-            $filename = $image->getClientOriginalName();
-            $destination = public_path('uploads');
-            $image->move($destination, $filename);
-            $material->documentation = $filename;
-        }
-        $material->description = $request->input('keterangan');
-        $material->type = $request->input('type');
-        $dikalibrasi = $request->input('dikalibrasi') !== null && $request->input('dikalibrasi') === '1' ? 1 : 0;
-        $material->dikalibrasi = $dikalibrasi;
-        $material->kalibrasi_by = $request->input('kalibrasi_by');
-        $material->last_kalibrasi = $request->input('last_kalibrasi');
-        $material->schadule_kalibrasi = $request->input('schedule_kalibrasi');
-        $material->save();
+    $locationId = DB::table('locations')
+        ->where('office', $office)
+        ->where('floor', $floor)
+        ->where('room', $room)
+        ->value('id');
 
-        return redirect('/asetTetap');
+    $material = Materials::findOrFail($id);
+
+    $material->code              = $request->input('code');        
+    $material->nup               = $request->input('nup');
+    $material->name              = $request->input('name');
+    $material->name_fix          = $request->input('name_fix');
+    $material->no_seri           = $request->input('no_seri');
+    $material->category          = $request->input('category');
+    $material->nilai             = $request->input('nilai');
+    $material->years             = $request->input('years');
+    $material->satuan            = $request->input('satuan');
+    $material->store_location    = $locationId;
+    $material->status            = $request->input('status');
+    $material->life_time         = $request->input('life_time');
+    $material->specification     = $request->input('specification');
+    $material->condition         = $request->input('condition');
+    $material->supervisor        = $request->input('supervisor');
+    $material->description       = $request->input('description');
+    $material->type              = $request->input('type');
+
+    if ($request->hasFile('documentation')) {
+        $image = $request->file('documentation');
+        $filename = time() . '_' . $image->getClientOriginalName(); 
+        $destination = public_path('uploads');
+        $image->move($destination, $filename);
+        $material->documentation = $filename;
+    }
+
+    $material->dikalibrasi       = $request->has('dikalibrasi') ? 1 : 0;
+    $material->kalibrasi_by      = $request->input('kalibrasi_by');
+    $material->last_kalibrasi    = $request->input('last_kalibrasi');
+    $material->schadule_kalibrasi = $request->input('schadule_kalibrasi');
+
+    $material->save();
+
+    return redirect('/asetTetap')->with('success', 'Data aset berhasil diperbarui');
+
     }
 
 
@@ -461,6 +472,6 @@ class BarangController extends Controller
     public function export(Request $request)
     {
         $selectedAsets = $request->input('id_aset', []);
-        return Excel::download(new AsetListExport($selectedAsets), 'AsetLaporanKondisiBarang.xlsx');
+        return Excel::download(new AsetExportInternal($selectedAsets), 'DataAset.xlsx');
     }
 }

@@ -2,465 +2,417 @@
 @section('content')
 
 <style>
-    .input-group .search-input {
-        border-right: none;
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
+    /* Styling Khusus untuk Tampilan Compact */
+    .table-custom {
+        font-size: 0.825rem;
+    }
+    .table-custom th {
+        background-color: #f6f9ff;
+        color: #012970;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        padding: 10px 8px;
+        white-space: nowrap;
+    }
+    .table-custom td {
+        vertical-align: middle;
+        padding: 8px 8px;
+    }
+    
+    /* Title Styling */
+    .page-title-custom {
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
+        color: #012970;
+        font-size: 1.35rem;
+        letter-spacing: -0.3px;
+        margin-bottom: 0;
     }
 
-    .input-group .search-btn {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-    }
+    .search-input { font-size: 0.9rem; border-right: none; }
+    .search-btn { border-left: none; background-color: white; color: #4154f1; border-color: #ced4da; }
+    .search-btn:hover { background-color: #f6f9ff; }
+    .btn-action-group .btn { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
 </style>
 
 <div id="location-data" data-locations="{{ json_encode($locations) }}"></div>
 
-<main id="main" class="main">
-    <div class="card mt-4">
-        <div class="card-header">
-            <div class="col-md-12 mb-3">
-                <div class="row justify-content-center"> <!-- Add 'justify-content-center' class to center-align the row -->
-                    <div class="col-md-6 text-center"> <!-- Replace 'text-right' with 'text-center' to center-align the form -->
-                        <form action="{{ route('asetTetap.search') }}" method="POST" class="form-inline">
+<main id="main" class="main" style="padding-top: 50px;"> 
+
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+        <div>
+            <h1 class="page-title-custom">DATA ASET</h1>
+            <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0" style="font-size: 0.8rem;">
+                    <li class="breadcrumb-item"><a href="/">Home</a></li>
+                    <li class="breadcrumb-item active">Aset Tetap</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <section class="section">
+        <div class="card border-0 shadow-sm" style="border-radius: 8px;">
+            <div class="card-body p-3">
+                
+                <div class="row g-2 mb-3 align-items-center">
+                    <div class="col-lg-4 col-md-6">
+                        <form action="{{ route('asetTetap.search') }}" method="POST">
                             @csrf
-                            <div class="input-group">
-                                <input type="text" name="query" class="form-control" placeholder="Search" aria-label="Search" value="{{ request()->input('query') }}">
-                                <div class="input-group-append">
-                                    <button class="btn btn-outline-primary search-btn" type="submit"><i class="bi bi-search"></i></button>
-                                    <a href="#" class="btn btn-outline-primary filter-btn" id="filterButton"><i class="bi bi-filter"></i></a>
-                                    <a href="#!" data-bs-toggle="modal" data-bs-target="#ModalAdd" style="float: right;">
-                                        <button type="button" class="btn btn-outline-primary"><i class="bi bi-qr-code"></i></button>
-                                    </a>
-                                </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" name="query" class="form-control border-start-0 ps-0" placeholder="Cari Kode, NUP, atau Nama..." value="{{ request()->input('query') }}">
+                                <a href="#" class="btn btn-outline-secondary" id="filterButton" title="Filter Lanjutan"><i class="bi bi-funnel"></i></a>
                             </div>
                         </form>
                     </div>
+
+                    <div class="col-lg-8 col-md-6 text-md-end text-start">
+                        <div class="btn-action-group">
+                            <a href="{{ route('asetTetap.create') }}" class="btn btn-success btn-sm me-1 shadow-sm">
+                                <i class="bi bi-plus-lg"></i> Tambah
+                            </a>
+                            <a href="{{ route('asetTetap.import') }}" class="btn btn-success btn-sm me-1">
+                                <i class="bi bi-file-earmark-arrow-down"></i> Import
+                            </a>
+                            
+                            <div class="d-inline-block border-start "></div>
+
+                            <button onclick="exportAset('{{ route('asetTetap.export') }}')" class="btn btn-primary btn-sm me-1" title="Export Excel">
+                                <i class="bi bi-file-earmark-arrow-up"></i> Export
+                            </button>
+                            <button onclick="generateQRCodes('{{ route('generate_qrcodes') }}')" class="btn btn-info btn-sm me-1" title="Cetak QR">
+                                <i class="bi bi-qr-code"></i> QR
+                            </button>
+                            <button onclick="multiDelete('{{ route('asetTetap.multiDelete') }}')" class="btn btn-danger btn-sm" title="Hapus Masal">
+                                <i class="bi bi-trash"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-12">
-            <div id="filterFields" style="display: {{ request()->is('asetTetap/filter') ? ' block' : 'none' }};" class="form-inline mt-2">
-                <div class="card-body">
+
+                <div id="filterFields" style="display: {{ request()->is('asetTetap/filter') ? ' block' : 'none' }};" class="mb-3 bg-light p-3 rounded">
                     @include('asetTetap.filter')
-                </div>    {{-- end of card body --}}
-            </div>
-        </div>
-    </div>
+                </div>
 
+                <div class="table-responsive" style="max-height: 650px; overflow-y: auto;">
+                    <form action="" method="post" class="form-produk">
+                        @csrf
+                        <table class="table table-sm table-hover table-bordered table-custom mb-0">
+                            <thead style="position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;">
+                                        <input type="checkbox" id="select_all">
+                                    </th>
+                                    <th class="text-center">No</th>
+                                    <th>Kode</th>
+                                    <th>NUP</th>
+                                    <th>Nama Barang</th>
+                                    <th>Nama Fix</th>
+                                    <th>No Seri</th>
+                                    <th class="text-center">Tahun</th>
+                                    <th>Nilai (Rp)</th>
+                                    <th class="text-center">Kondisi</th>
+                                    <th>Kategori</th>
+                                    <th>Lokasi</th>
+                                    <th>Penanggung Jawab</th>
+                                    <th>Kalibrasi Terakhir</th>
+                                    <th>Jadwal Kal.</th>
+                                    <th>Status</th>
+                                    <th>Tipe</th>
+                                    <th>Qty</th>
+                                    <th>Satuan</th>
+                                    <th>Umur (Thn)</th>
+                                    <th class="text-center" style="min-width: 80px;">Dokumentasi</th>
+                                    <th class="text-center" style="min-width: 100px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $no = 1; @endphp
+                                @foreach ($items as $item)
+                                    @if ($item->status !== "Diserahkan")
+                                        <tr data-item-id="{{ $item->id }}">
+                                            <td class="text-center">
+                                                <input class="form-check-input" type="checkbox" name="id_aset[]" value="{{ $item->id }}" style="transform: scale(0.8);">
+                                            </td>
+                                            <td class="text-center">{{ $no }}</td>
 
-    {{--card--}}
-    <div class="card mt-4">
-        <div class="card mt-4">
-            <div class="card-header">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h3 class="h4 fw-bold">DATA ASET</h3>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <a href="{{ route('asetTetap.create') }}">
-                            <button type="button" class="btn btn-success"><i class="bi bi-plus-square-fill" style="font-size: 14px"></i> Add</button>
-                        </a>
-                        <a href="{{ route('asetTetap.import') }}">
-                            <button type="button" class="btn btn-success"><i class="bi bi-upload" style="font-size: 14px"></i> Import</button>
-                        </a>
+                                            <!-- Kode -->
+                                            <td><span class="fw-bold text-primary">{{ $item->code ?? '-' }}</span></td>
 
+                                            <!-- NUP -->
+                                            <td>{{ $item->nup ?? '-' }}</td>
 
-                        <button onclick="exportAset('{{ route('asetTetap.export') }}')" class="btn btn-primary btn-xs btn-flat"><i class="bi bi-download"></i> Export</button>
-                        <button onclick="multiDelete('{{ route('asetTetap.multiDelete') }}')" class="btn btn-danger btn-xs btn-flat"><i class="bi bi-trash"></i> Hapus</button>
-                        <button onclick="generateQRCodes('{{ route('generate_qrcodes') }}')" class="btn btn-info btn-xs btn-flat"><i class="bi bi-qr-code"></i> Cetak QrCode</button>
-                    </div>
+                                            <!-- Nama Barang (utama) -->
+                                            <td>
+                                                <div class="fw-bold text-dark">{{ Str::limit($item->name ?? '-', 30) }}</div>
+                                            </td>
+
+                                            <!-- Nama Fix (detail kecil di bawah) -->
+                                            <td>
+                                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                                    {{ Str::limit($item->name_fix ?? '-', 25) }}
+                                                </div>
+                                            </td>
+
+                                            <td>{{ $item->no_seri ?? '-' }}</td>
+
+                                            <td class="text-center">{{ $item->years ?? $item->tahun ?? '-' }}</td>
+
+                                            <td class="text-end">{{ number_format($item->nilai ?? 0, 0, ',', '.') }}</td>
+
+                                            <td class="text-center">
+                                                @php
+                                                    $cond = $item->condition ?? 'Baik';
+                                                    $color = match($cond) {
+                                                        'Baik' => 'success',
+                                                        'Rusak Ringan' => 'warning',
+                                                        default => 'danger',
+                                                    };
+                                                    $label = $cond === 'Rusak Ringan' ? 'R. Ringan' : ($cond === 'Rusak Berat' ? 'R. Berat' : $cond);
+                                                @endphp
+                                                <span class="badge rounded-pill bg-{{ $color }} text-white" style="font-size: 0.7rem;">
+                                                    {{ $label }}
+                                                </span>
+                                            </td>
+
+                                            <td>{{ $item->category ?? '-' }}</td>
+
+                                            <td>
+                                                @foreach ($locations as $location)
+                                                    @if ($location->id == $item->store_location)
+                                                        <div style="line-height: 1.1;">
+                                                            {{ $location->office ?? '-' }}
+                                                            @if($location->floor || $location->room)
+                                                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                                                    Lt {{ $location->floor }} - R {{ $location->room }}
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            </td>
+
+                                            <td>
+                                                @foreach ($employees as $employee)
+                                                    @if ($employee->id == $item->supervisor)
+                                                        {{ Str::limit($employee->name ?? '-', 20) }}
+                                                    @endif
+                                                @endforeach
+                                            </td>
+
+                                            <td class="text-center small">
+                                                {{ $item->last_kalibrasi ? \Carbon\Carbon::parse($item->last_kalibrasi)->format('d M Y') : '-' }}
+                                            </td>
+
+                                            <td class="text-center small">
+                                                {{ $item->schadule_kalibrasi ? \Carbon\Carbon::parse($item->schadule_kalibrasi)->format('d M Y') : '-' }}
+                                            </td>
+
+                                            <td class="text-center">
+                                                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">
+                                                    {{ $item->status ?? '-' }}
+                                                </span>
+                                            </td>
+
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary text-white" style="font-size: 0.7rem;">
+                                                    {{ $item->type ?? '-' }}
+                                                </span>
+                                            </td>
+
+                                            <td class="text-center">{{ $item->quantity ?? 1 }}</td>
+                                            <td class="text-center">{{ $item->satuan ?? '-' }}</td>
+                                            <td class="text-center">{{ $item->life_time ?? '-' }}</td>
+
+                                            <!-- DOKUMENTASI: Tampilkan ikon foto jika ada file -->
+                                            <td class="text-center">
+                                                @if ($item->documentation && file_exists(public_path('uploads/' . $item->documentation)))
+                                                    <a href="{{ asset('uploads/' . $item->documentation) }}" target="_blank" title="Lihat Foto/Dokumen">
+                                                        <i class="bi bi-image-fill text-primary fs-5"></i>
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted small">-</span>
+                                                @endif
+                                            </td>
+
+                                            <!-- AKSI -->
+                                            <td class="text-center">
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{{ route('asetTetap.edit', $item->id) }}" class="btn btn-light text-warning p-1" title="Edit">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-light text-danger delete-button p-1" data-item-id="{{ $item->id }}" title="Hapus">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @php $no++; @endphp
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </form>
                 </div>
             </div>
         </div>
-        <div class="card-body mt-4">
-            <div class="table-responsive" style="height: 500px; overflow-y: auto;">
-                <!-- Default Table -->
-                <form action="" method="post" class="form-produk">
-                    @csrf
-                    <table class="table table-bordered">
-                        <thead style="position: sticky; top: 0; background-color: #f4f8fb;">
-                            <tr>
-                                <th width="5%">
-                                    <input type="checkbox" name="select_all" id="select_all">
-                                </th>
-                                <th scope="col">No</th>
-                                <th scope="col">Kode Barang</th>
-                                <th scope="col">NUP</th>
-                                <th scope="col">Merk</th>
-                                <th scope="col">Koreksi Nama</th>
-                                <th scope="col">Nilai</th>
-                                {{-- <th scope="col">Kuantitas</th> --}}
-                                <th scope="col">Tahun</th>
-                                <th scope="col">Lokasi</th>
-                                <th scope="col">Kondisi</th>
-                                <th scope="col">Penanggung Jawab</th>
-                                <th scope="col">Dokumentasi</th>
-                                <th scope="col">Keterangan</th>
-                                <th scope="col">Kalibrasi oleh</th>
-                                <th scope="col">Terakhir Kalibrasi</th>
-                                <th scope="col">Jadwal Kalibrasi</th>
-                                <th scope="col">Jenis Aset</th>
-                                <th scope="col">Input pada</th>
-                                <th scope="col">Status</th>
-                                <th scope="col">Teregistrasi</th>
-                                <th scope="col">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody style="background-color: #f4f8fb">
-                            @php
-                                $no =1 ;
-                            @endphp
-                            @foreach ($items as $item)
-                                @if ($item->status !== "Diserahkan")
+    </section>
 
-                                <tr data-item-id="{{ $item->id }}">
-                                    <td>
-                                        <input type="checkbox" name="id_aset[]" value="{{ $item->id }}">
-                                    </td>
-                                    <td>{{ $no }}</td>
-                                    <td>{{ $item->code }}</td>
-                                    <td>{{ $item->nup }}</td>
-                                    <td>{{ $item->name }}</td>
-                                    <td>{{ $item->name_fix }}</td>
-                                    <td>{{ number_format($item->nilai, 0, ',', '.') }}</td>
-                                    <td>{{ $item->years }}</td>
-                                    <td>
-                                        @foreach ($locations as $location)
-                                            @if ($location->id == $item->store_location)
-                                                @if ($location->floor == 0 && $location->room == 0)
-                                                    {{ $location->office }}
-                                                @else
-                                                    {{ $location->office }} - Lt {{ $location->floor }} - R {{ $location->room }}
-                                                @endif
-                                            @endif
-                                        @endforeach
-                                    </td>
-                                    <td>
-                                        <div class="badge text-wrap" style="width: 6rem; background-color: {{ $item->condition === 'Baik' ? '#59beda' : ($item->condition === 'Rusak Ringan' ? '#FFA726' : '#f05050') }};
-                                            ; color: #ffffff">
-                                            {{ $item->condition }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @foreach ($employees as $employe)
-                                            @if ($employe->id == $item->supervisor)
-                                                {{ $employe->name }}
-                                            @endif
-                                        @endforeach
-                                    </td>
-                                    <td>
-                                        @if ($item->documentation)
-                                            <a href="{{ asset('uploads/' . $item->documentation) }}" download>
-                                                <img src="{{ asset('uploads/' . $item->documentation) }}" alt="" style="max-width: 100px; max-height: 100px;">
-                                            </a>
-                                            {{-- <img src="uploads/{{ $item->documentation }}" alt="" style="max-width: 100px; max-height: 100px;"> --}}
-                                        @endif
-                                    </td>
-                                    <td>{{ $item->description }}</td>
-
-                                    {{-- <td>{{ $item->quantity }}</td> --}}
-                                    {{-- <td>{{ $item->specification }}</td> --}}
-                                    {{-- <td>
-                                        @foreach ($categories as $category)
-                                            @if ($category->id == $item->category)
-                                                {{ $category->name }}
-                                            @endif
-                                        @endforeach
-                                    </td> --}}
-                                    <td>{{ $item->kalibrasi_by }}</td>
-                                    <td>{{ $item->last_kalibrasi }}</td>
-                                    <td>{{ $item->schadule_kalibrasi }}</td>
-                                    <td>
-                                        <div class="badge text-wrap" style="width: 6rem; background-color: {{ $item->type === 'Bergerak' ? '#0a3622' : '#479f76' }};
-                                            ;
-                                            ; color: #ffffff">
-                                            {{ $item->type }}
-                                        </div>
-                                    </td>
-                                    <td>{{ $item->created_at }}</td>
-                                    <td>{{ $item->status }}</td>
-                                    <td>{{ $item->registered }}</td>
-                                    <td>
-                                        <div class="d-inline-flex">
-                                            {{--<a href="/asetTetap/{{ $item->id }}/edit" class="badge bg-warning text-dark" style="text-decoration: none;"><i class="bi bi-pencil"></i></a>--}}
-                                            <a href="{{ route('asetTetap.edit', $item->id) }}" class="badge bg-warning text-dark" style="text-decoration: none;"><i class="bi bi-pencil"></i></a>
-                                            <button type="button" class="badge bg-danger ml-2 delete-button" style="text-decoration: none;" data-item-id="{{ $item->id }}"><i class="bi bi-trash"></i></button>
-                                        </div>
-                                    </td>
-
-
-                                </tr>
-
-                                @php
-                                    $no++;
-                                @endphp
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
-                </form>
-            <!-- End Default Table Example -->
-
-            {{-- Pagination --}}
-            {{-- <div class="d-flex justify-content-center">
-                {{ $items->links() }}
-            </div> --}}
-            {{-- End Pagination --}}
-            </div>
-        </div>
-    </div>
-    {{--endcard--}}
-</div>
 </main>
 
 @include('asetTetap.scane')
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{{ asset('js/indexaset.js') }}"></script>
-{{-- <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script> --}}
+
 <script>
+    // --- Logic Lokasi ---
+    var gedungSelect = document.getElementById('gedung');
+    var lantaiSelect = document.getElementById('lantai');
+    var ruanganSelect = document.getElementById('ruangan');
 
+    if(gedungSelect && lantaiSelect && ruanganSelect){
+        gedungSelect.addEventListener('change', populateLantaiSelect);
+        lantaiSelect.addEventListener('change', populateRuanganSelect);
+    }
 
+    function populateLantaiSelect() {
+        var selectedGedung = gedungSelect.value;
+        lantaiSelect.innerHTML = '<option value="">Lantai</option>';
+        var lantaiOptions = getUniqueOptionsByOffice(selectedGedung, 'floor');
+        lantaiOptions.forEach(function(option) {
+            var opt = document.createElement('option');
+            opt.value = option; opt.textContent = option;
+            lantaiSelect.appendChild(opt);
+        });
+        ruanganSelect.innerHTML = '<option value="">Ruangan</option>';
+        ruanganSelect.disabled = true;
+    }
 
-    // ================= scanning
+    function populateRuanganSelect() {
+        var selectedLantai = lantaiSelect.value;
+        var selectedGedung = gedungSelect.value;
+        ruanganSelect.innerHTML = '<option value="">Ruangan</option>';
+        var ruanganOptions = getUniqueOptionsByFloor(selectedGedung, selectedLantai, 'room');
+        ruanganOptions.forEach(function(option) {
+            var opt = document.createElement('option');
+            opt.value = option; opt.textContent = option;
+            ruanganSelect.appendChild(opt);
+        });
+    }
 
-    // ================== end scanning
-
-        function generateQRCodes(url) {
-            var csrfToken = document.querySelector('input[name="_token"]').value;
-            if ($('input:checked').length < 1) {
-                alert('Pilih data yang akan dicetak');
-                return;
+    function getUniqueOptionsByOffice(gedung, property) {
+        var options = [];
+        <?php foreach($locations as $location) { ?>
+            if ("<?php echo $location->office; ?>" === gedung && options.indexOf("<?php echo $location->floor; ?>") === -1) {
+                options.push("<?php echo $location->floor; ?>");
             }
-            // else if ($('input:checked').length < 3) {
-            //     alert('Pilih minimal 3 data untuk dicetak');
-            //     return;
-            // }
-             else {
-                $('.form-produk')
-                    .attr('target', '_blank')
-                    .attr('action', url)
-                    .submit();
+        <?php } ?>
+        return options;
+    }
+
+    function getUniqueOptionsByFloor(gedung, lantai, property) {
+        var options = [];
+        <?php foreach($locations as $location) { ?>
+            if ("<?php echo $location->floor; ?>" === lantai && "<?php echo $location->office; ?>" === gedung && options.indexOf("<?php echo $location->room; ?>") === -1) {
+                options.push("<?php echo $location->room; ?>");
             }
+        <?php } ?>
+        return options;
+    }
+
+    // --- Logic Tombol Global ---
+    function generateQRCodes(url) {
+        if ($('input[name="id_aset[]"]:checked').length < 1) {
+            Swal.fire('Pilih Data', 'Centang minimal satu aset untuk mencetak QR.', 'info');
+            return;
         }
+        $('.form-produk').attr('target', '_blank').attr('action', url).submit();
+    }
 
-        function multiDelete(url) {
-            var csrfToken = document.querySelector('input[name="_token"]').value;
-            if ($('input:checked').length < 1) {
-                alert('Pilih data yang akan dihapus');
-                return;
-            } else {
-                alert('Yakin ingin menghapus ?');
-                $('.form-produk')
-                    .attr('action', url)
-                    .submit();
-            }
+    function multiDelete(url) {
+        if ($('input[name="id_aset[]"]:checked').length < 1) {
+            Swal.fire('Pilih Data', 'Centang data yang ingin dihapus.', 'info');
+            return;
         }
-
-        function exportAset(url) {
-            var csrfToken = document.querySelector('input[name="_token"]').value;
-            if ($('input:checked').length < 1) {
-                alert('Pilih data yang akan diexport');
-                return;
-            } else {
-                $('.form-produk')
-                    .attr('action', url)
-                    .submit();
+        Swal.fire({
+            title: 'Hapus Terpilih?',
+            text: "Data yang dicentang akan dihapus permanen.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('.form-produk').attr('action', url).submit();
             }
-        }
+        })
+    }
 
-     // JavaScript
+    function exportAset(url) {
+        $('.form-produk').attr('action', url).submit();
+    }
+
+    // --- JQUERY UTAMA (Bagian Penting untuk Tombol Hapus) ---
     $(document).ready(function() {
         var csrfToken = document.querySelector('input[name="_token"]').value;
 
-        $('.delete-button').on('click', function() {
+        // PERBAIKAN: Gunakan $(document).on(...) agar tombol tetap bisa diklik meskipun tabel berubah/pagination
+        $(document).on('click', '.delete-button', function(e) {
+            e.preventDefault(); 
             var itemId = $(this).data('item-id');
-
+            
             Swal.fire({
-                title: 'Confirmation',
-                text: 'Are you sure you want to delete this item?',
+                title: 'Hapus Item?',
+                text: "Data ini tidak bisa dikembalikan.",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Yes, Delete',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus'
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({
                         url: '/asetTetap/' + itemId,
                         type: 'DELETE',
-                        data: {
-                            _token: csrfToken // Make sure csrfToken is defined and accessible in this context
-                        },
+                        data: { _token: csrfToken },
                         success: function(response) {
                             Swal.fire({
-                                title: 'Success',
-                                text: '{{ session('success') }}',
                                 icon: 'success',
+                                title: 'Terhapus',
                                 showConfirmButton: false,
-                                timer: 1500
-                            }).then(function() {
-                                window.location.href = "{{ route('asetTetap.index') }}";
-                            });
+                                timer: 1000
+                            }).then(() => { location.reload(); });
                         },
-                        error: function(xhr, status, error) {
-                            // Handle error if needed
-                            console.error(error);
+                        error: function(xhr) {
+                            console.log(xhr.responseText);
+                            Swal.fire('Error', 'Gagal menghapus data. Cek Console.', 'error');
                         }
                     });
                 }
             });
         });
-    });
 
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get the "select all" checkbox element
-        var selectAllCheckbox = document.getElementById('select_all');
-
-        // Get all the individual checkboxes
-        var checkboxes = document.querySelectorAll('input[name="id_aset[]"]');
-
-        // Add an event listener to the "select all" checkbox
-        selectAllCheckbox.addEventListener('change', function() {
-            // Iterate over each checkbox
-            checkboxes.forEach(function(checkbox) {
-                // Set the checked property of each checkbox to match the "select all" checkbox
-                checkbox.checked = selectAllCheckbox.checked;
-            });
+        $('#select_all').change(function() {
+            $('input[name="id_aset[]"]').prop('checked', this.checked);
         });
 
-        // Add an event listener to each individual checkbox
-        checkboxes.forEach(function(checkbox) {
-            checkbox.addEventListener('change', function() {
-                // If any checkbox is unchecked, uncheck the "select all" checkbox
-                if (!checkbox.checked) {
-                    selectAllCheckbox.checked = false;
-                }
-            });
-        });
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get the "select all" checkbox element
-            var selectAllCheckbox = document.getElementById('select_all');
-
-            // Get all the individual checkboxes
-            var checkboxes = document.querySelectorAll('input[name="id_aset"]');
-
-            // Add an event listener to the "select all" checkbox
-            selectAllCheckbox.addEventListener('change', function() {
-                // Iterate over each checkbox
-                checkboxes.forEach(function(checkbox) {
-                    // Set the checked property of each checkbox to match the "select all" checkbox
-                    checkbox.checked = selectAllCheckbox.checked;
-                });
-            });
-        });
-
-        //============ delete
-        const deleteButtons = document.querySelectorAll('.delete-button');
-
-        deleteButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const formId = this.getAttribute('data-form-id');
-
-                Swal.fire({
-                    title: 'Konfirmasi',
-                    text: 'Anda yakin ingin menghapus data ini?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya, Hapus',
-                    cancelButtonText: 'Batal',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        document.getElementById(formId).submit();
-                    }
-                });
-            });
-        });
-    });
-
-    // =============== lokasi
-    // Get the select elements
-    var gedungSelect = document.getElementById('gedung');
-    var lantaiSelect = document.getElementById('lantai');
-    var ruanganSelect = document.getElementById('ruangan');
-
-    // Add event listeners to the select elements
-    gedungSelect.addEventListener('change', populateLantaiSelect);
-    lantaiSelect.addEventListener('change', populateRuanganSelect);
-
-    // Function to populate the lantai select element based on the selected gedung
-    function populateLantaiSelect() {
-    var selectedGedung = gedungSelect.value;
-
-    // Clear previous options
-    lantaiSelect.innerHTML = '<option value="">Lantai</option>';
-
-
-    // Populate lantai options based on the selected gedung
-    var lantaiOptions = getUniqueOptionsByOffice(selectedGedung, 'floor');
-    lantaiOptions.forEach(function(option) {
-        var optionElement = document.createElement('option');
-        optionElement.value = option;
-        optionElement.textContent = option;
-        lantaiSelect.appendChild(optionElement);
-    });
-
-
-    // Reset and disable the ruangan select element
-    ruanganSelect.innerHTML = '<option value="">Ruangan</option>';
-    ruanganSelect.disabled = true;
-    }
-
-    // Function to populate the ruangan select element based on the selected lantai
-    function populateRuanganSelect() {
-    var selectedLantai = lantaiSelect.value;
-    var selectedGedung = gedungSelect.value;
-
-    // Clear previous options
-    ruanganSelect.innerHTML = '<option value="">Ruangan</option>';
-
-    // Populate ruangan options based on the selected lantai
-    var ruanganOptions = getUniqueOptionsByFloor(selectedGedung, selectedLantai, 'room');
-    ruanganOptions.forEach(function(option) {
-        var optionElement = document.createElement('option');
-        optionElement.value = option;
-        optionElement.textContent = option;
-        ruanganSelect.appendChild(optionElement);
-    });
-
-    }
-
-    // Helper function to get unique options from the $locations array based on the given property
-    function getUniqueOptionsByOffice(gedung, property) {
-    var options = [];
-        <?php foreach($locations as $location) { ?>
-            if ("<?php echo $location->office; ?>" === gedung && options.indexOf("<?php echo $location->floor; ?>") === -1) {
-            options.push("<?php echo $location->floor; ?>");
+        $('input[name="id_aset[]"]').change(function() {
+            if ($('input[name="id_aset[]"]:checked').length == $('input[name="id_aset[]"]').length) {
+                $('#select_all').prop('checked', true);
+            } else {
+                $('#select_all').prop('checked', false);
             }
-        <?php } ?>
-        return options;
-    }
+        });
 
-    // Helper function to get unique options from the $locations array based on the given property
-    function getUniqueOptionsByFloor(gedung, lantai, property) {
-        var options = [];
-        <?php foreach($locations as $location) { ?>
-            if ("<?php echo $location->floor; ?>" === lantai && "<?php echo $location->office; ?>" === gedung && options.indexOf("<?php echo $location->room; ?>") === -1) {
-            options.push("<?php echo $location->room; ?>");
-            }
-        <?php } ?>
-        return options;
-    }
-
+        $('#filterButton').click(function(e) {
+            e.preventDefault();
+            $('#filterFields').slideToggle();
+        });
+    });
 </script>
-
-
 
 @endsection

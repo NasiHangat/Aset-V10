@@ -2,175 +2,217 @@
 
 @section('content')
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.28.0/dist/apexcharts.min.js"></script>
 <main id="main" class="main">
 
-    <div class="pagetitle" style="margin-top:20px">
-      <h1>Dashboard</h1>
-    </div><!-- End Page Title -->
-
-    <section class="section dashboard">
-      <div class="row">
-        <!-- Grafik Aset -->
-        <div class="col-12">
-          <div class="card">
-            <div class="card-body">
-              <a href="{{ url('asetTetap') }}">
-                <h5 class="card-title">Aset</h5>
-              </a>
-              <!-- Line Chart -->
-              <div id="grafik"></div>
-              <div id="myChart"></div>
-              <script>
-                document.addEventListener("DOMContentLoaded", () => {
-                  new ApexCharts(document.querySelector("#reportsChart"), {
-                    series: [{
-                      name: 'Aset Tetap',
-                      data: [31, 40, 28, 51, 42, 82, 56],
-                    }, {
-                      name: 'Aset Bergerak',
-                      data: [11, 32, 45, 32, 34, 52, 41]
-                    }],
-                    chart: {
-                      height: 350,
-                      type: 'area',
-                      toolbar: {
-                        show: false
-                      },
-                    },
-                    markers: {
-                      size: 4
-                    },
-                    colors: ['#4154f1', '#2eca6a', '#ff771d'],
-                    fill: {
-                      type: "gradient",
-                      gradient: {
-                        shadeIntensity: 1,
-                        opacityFrom: 0.3,
-                        opacityTo: 0.4,
-                        stops: [0, 90, 100]
-                      }
-                    },
-                    dataLabels: {
-                      enabled: false
-                    },
-                    stroke: {
-                      curve: 'smooth',
-                      width: 2
-                    },
-                    xaxis: {
-                      type: 'date',
-                      categories: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"]
-                    },
-                    tooltip: {
-                      x: {
-                        format: 'dd/MM/yy'
-                      },
-                    }
-                  }).render();
-                });
-              </script>
-              <!-- End Line Chart -->
-            </div>
-          </div>
-        </div>
-        <!-- End Grafik Aset -->
-        <!-- Grafik Barang Habis Pakai -->
-        <div class="col-6">
-          <div class="card">
-            <div class="card-body">
-              <a href="{{ url('items') }}">
-                <h5 class="card-title">Barang Habis Pakai</h5>
-              </a>
-              <!-- Bar Chart -->
-              <div id="grafik1" style="min-height: 400px; user-select: none;" class="echart" _echarts_instance_="ec_1689028823468">
-                  <div style="position: relative; width: 443px; height: 400px; padding: 0px; margin: 0px; border-width: 0px; cursor: default;">
-                      <canvas style="position: absolute; left: 0px; top: 0px; width: 443px; height: 400px; user-select: none; padding: 0px; margin: 0px; border-width: 0px;" data-zr-dom-id="zr_0" width="443" height="400"></canvas>
-                  </div>
-              </div>
-              <!-- End Bar Chart -->
-            </div>
-          </div>
-        </div>
-        <!-- End Barang Habis Pakai -->
+    <div class="pagetitle d-flex justify-content-between align-items-center" style="margin-top: 20px; margin-bottom: 30px;">
+      <div>
+        <h1>Dashboard</h1>
+        <nav>
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url('/') }}">Home</a></li>
+            <li class="breadcrumb-item active">Dashboard</li>
+          </ol>
+        </nav>
       </div>
+    </div><section class="section dashboard">
+      <div class="row">
+
+        <div class="col-lg-8 col-md-12">
+          <div class="card dashboard-card">
+            <div class="card-body">
+              <a href="{{ url('asetTetap') }}" class="text-decoration-none">
+                <div class="card-header-custom">
+                  <h5 class="card-title-custom">
+                    <i class="bi bi-graph-up-arrow"></i> Statistik Aset
+                  </h5>
+                  <span class="badge bg-primary-light text-primary"><i class="bi bi-arrow-right"></i> Detail</span>
+                </div>
+              </a>
+              
+              <div id="grafikAset" style="width:100%; height:400px;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-12">
+          <div class="card dashboard-card">
+            <div class="card-body">
+              <a href="{{ url('items') }}" class="text-decoration-none">
+                <div class="card-header-custom">
+                  <h5 class="card-title-custom">
+                    <i class="bi bi-box-seam"></i> Barang Habis Pakai
+                  </h5>
+                  <span class="badge bg-warning-light text-warning"><i class="bi bi-arrow-right"></i> Detail</span>
+                </div>
+              </a>
+              
+              <div id="grafikBarang" style="width:100%; height:400px;"></div>
+            </div>
+          </div>
+        </div>
+        </div>
     </section>
 
-  </main>
+</main>
+
 <script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/export-data.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
 <script type="text/javascript">
-  var aset1 = <?php echo json_encode($quantityBergerak) ?>;
-  var aset2 = <?php echo json_encode($quantityTetap) ?>;
-  var bulan = <?php echo json_encode($bulan) ?>;
+  document.addEventListener('DOMContentLoaded', function () {
+    
+    // --- Data dari PHP Controller ---
+    var dataAsetBergerak = <?php echo json_encode($quantityBergerak) ?>;
+    var dataAsetTetap = <?php echo json_encode($quantityTetap) ?>;
+    var labelBulanAset = <?php echo json_encode($bulan) ?>;
 
-  Highcharts.chart('grafik',{
-    title : {
-      text: 'Grafik Aset'
-    },
-    xAxis : {
-      categories : bulan
-    },
-    yAxis : {
-      title: {
-        text : 'Nominal'
-      }
-    },
-    plotOptions: {
-      series: {
-        allowPointSelect: true
-      }
-    },
-    series: [
-      {
-        name: 'Bergerak',
-        data: aset1
+    var dataRT = <?php echo json_encode($quantityRT) ?>;
+    var dataATK = <?php echo json_encode($quantityATK) ?>;
+    var dataLab = <?php echo json_encode($quantityLab) ?>;
+    var labelBulanBarang = <?php echo json_encode($bulan1) ?>;
+
+    // --- Konfigurasi Global Highcharts (Agar tampilan konsisten) ---
+    Highcharts.setOptions({
+        chart: {
+            style: {
+                fontFamily: '"Nunito", sans-serif'
+            }
+        },
+        colors: ['#4154f1', '#2eca6a', '#ff771d', '#ffca2c']
+    });
+
+    // --- 1. Render Grafik Aset (Area Spline agar terlihat modern) ---
+    Highcharts.chart('grafikAset', {
+      chart: {
+        type: 'areaspline', // Menggunakan kurva halus dengan fill area
+        backgroundColor: 'transparent'
       },
-      {
-        name: 'Tetap',
-        data: aset2
-      }
-    ]
-  });
-  
-  var barang1 = <?php echo json_encode($quantityRT) ?>;
-  var barang2 = <?php echo json_encode($quantityATK) ?>;
-  var barang3 = <?php echo json_encode($quantityLab) ?>;
-  var bulan1 = <?php echo json_encode($bulan1) ?>;
-
-  Highcharts.chart('grafik1',{
-    title : {
-      text: 'Grafik Barang Habis Pakai'
-    },
-    xAxis : {
-      categories : bulan1
-    },
-    yAxis : {
       title: {
-        text : 'Nominal'
-      }
-    },
-    plotOptions: {
-      series: {
-        allowPointSelect: true
-      }
-    },
-    series: [
-      {
+        text: '',
+        style: { display: 'none' } // Judul sudah ada di card header
+      },
+      xAxis: {
+        categories: labelBulanAset,
+        crosshair: true,
+        gridLineWidth: 0,
+        lineWidth: 1,
+        lineColor: '#e0e0e0'
+      },
+      yAxis: {
+        title: {
+          text: 'Jumlah Unit'
+        },
+        gridLineDashStyle: 'LongDash',
+        gridLineColor: '#f0f0f0'
+      },
+      tooltip: {
+        shared: true,
+        useHTML: true,
+        headerFormat: '<small>{point.key}</small><table>',
+        pointFormat: '<tr><td style="color: {series.color}">{series.name}: </td>' +
+                     '<td style="text-align: right"><b>{point.y}</b></td></tr>',
+        footerFormat: '</table>',
+        valueSuffix: ' unit',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 10,
+        shadow: true,
+        borderWidth: 0
+      },
+      plotOptions: {
+        areaspline: {
+          fillOpacity: 0.1, // Transparansi warna area
+          marker: {
+              radius: 4,
+              lineColor: '#fff',
+              lineWidth: 2
+          }
+        }
+      },
+      series: [{
+        name: 'Aset Bergerak',
+        data: dataAsetBergerak,
+        color: '#4154f1',
+        fillColor: {
+            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+            stops: [
+                [0, 'rgba(65, 84, 241, 0.5)'],
+                [1, 'rgba(65, 84, 241, 0.0)']
+            ]
+        }
+      }, {
+        name: 'Aset Tetap',
+        data: dataAsetTetap,
+        color: '#2eca6a',
+        fillColor: {
+            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+            stops: [
+                [0, 'rgba(46, 202, 106, 0.5)'],
+                [1, 'rgba(46, 202, 106, 0.0)']
+            ]
+        }
+      }],
+      credits: { enabled: false }
+    });
+
+    // --- 2. Render Grafik Barang Habis Pakai (Column Chart) ---
+    Highcharts.chart('grafikBarang', {
+      chart: {
+        type: 'column',
+        backgroundColor: 'transparent'
+      },
+      title: {
+        text: '',
+        style: { display: 'none' }
+      },
+      xAxis: {
+        categories: labelBulanBarang,
+        crosshair: true
+      },
+      yAxis: {
+        min: 0,
+        title: {
+          text: 'Stok Terpakai'
+        },
+        gridLineDashStyle: 'LongDash',
+        gridLineColor: '#f0f0f0'
+      },
+      tooltip: {
+        headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+        pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+          '<td style="padding:0"><b>{point.y}</b></td></tr>',
+        footerFormat: '</table>',
+        shared: true,
+        useHTML: true,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 10,
+        shadow: true,
+        borderWidth: 0
+      },
+      plotOptions: {
+        column: {
+          pointPadding: 0.2,
+          borderWidth: 0,
+          borderRadius: 3
+        }
+      },
+      series: [{
         name: 'Rumah Tangga',
-        data: barang1
-      },
-      {
+        data: dataRT,
+        color: '#ff771d'
+      }, {
         name: 'Laboratorium',
-        data: barang3
-      },
-      {
+        data: dataLab,
+        color: '#4154f1'
+      }, {
         name: 'ATK',
-        data: barang2
-      }
-    ]
+        data: dataATK,
+        color: '#2eca6a'
+      }],
+      credits: { enabled: false }
+    });
+
   });
 </script>
-
 
 @endsection
